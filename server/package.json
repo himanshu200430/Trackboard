@@ -1,0 +1,27 @@
+{
+  "name": "tackboard-server",
+  "version": "1.0.0",
+  "description": "Tackboard Backend - Express, PostgreSQL with pg driver, pure SQL, node-pg-migrate, JWT httpOnly cookies, RBAC",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "migrate:up": "node scripts/migrate.js up",
+    "migrate:down": "node scripts/migrate.js down",
+    "seed": "node scripts/seed.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "node-pg-migrate": "^7.8.0"
+  }
+}
+

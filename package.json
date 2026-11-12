@@ -1,0 +1,15 @@
+{
+  "name": "tackboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tackboard — Tactile Project Management App (React, Express, PostgreSQL)",
+  "scripts": {
+    "server": "npm --prefix server run dev",
+    "client": "npm --prefix client run dev",
+    "migrate": "npm --prefix server run migrate:up",
+    "seed": "npm --prefix server run seed",
+    "build": "npm --prefix client run build",
+    "test:backend": "node server/tests/phase1.test.js"
+  }
+}
+

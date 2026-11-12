@@ -86,13 +86,22 @@ function extractJSON(rawText) {
 }
 
 /**
- * Helper to retrieve Groq API key from environment
+ * Helper to retrieve and sanitize Groq API key from environment
  */
 function getGroqKey() {
-  return (
+  const raw =
     process.env.GROQ_API_KEY ||
-    (process.env.GEMINI_API_KEY?.startsWith('gsk_') ? process.env.GEMINI_API_KEY : null)
-  );
+    (process.env.GEMINI_API_KEY?.startsWith('gsk_') ? process.env.GEMINI_API_KEY : null);
+
+  if (!raw) return null;
+
+  // Clean key: extract first valid 'gsk_...' token and strip any accidental newlines or whitespace
+  const match = raw.match(/gsk_[a-zA-Z0-9_-]+/);
+  if (match) {
+    return match[0].trim();
+  }
+
+  return raw.trim();
 }
 
 // ============================================================================

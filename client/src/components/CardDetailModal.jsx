@@ -26,6 +26,7 @@ export const CardDetailModal = ({
   const [newLabelColor, setNewLabelColor] = useState('#C85A32');
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [aiResult, setAiResult] = useState(null);
+  const [aiError, setAiError] = useState(null);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export const CardDetailModal = ({
       setTitle(card.title || '');
       setDescription(card.description || '');
       setAiResult(null);
+      setAiError(null);
     }
   }, [card]);
 
@@ -70,6 +72,7 @@ export const CardDetailModal = ({
 
   const handleAISummarize = async () => {
     setIsSummarizing(true);
+    setAiError(null);
     try {
       const res = await fetch('/api/ai/summarize', {
         method: 'POST',
@@ -82,15 +85,20 @@ export const CardDetailModal = ({
         }),
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (res.ok) {
-        const data = await res.json();
         setAiResult(data);
         toast.success('AI summary & progress analysis ready!');
       } else {
-        toast.error("Couldn't generate AI summary.");
+        const msg = data.error || "Couldn't generate AI summary.";
+        setAiError(msg);
+        toast.error(msg);
       }
     } catch (err) {
-      toast.error('Network error during AI summarization.');
+      const msg = 'Network error during AI summarization: ' + err.message;
+      setAiError(msg);
+      toast.error(msg);
     } finally {
       setIsSummarizing(false);
     }
@@ -318,6 +326,30 @@ export const CardDetailModal = ({
                   )}
                 </button>
               </div>
+
+              {aiError && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                    padding: '12px 14px',
+                    backgroundColor: 'rgba(178, 67, 61, 0.08)',
+                    border: '1px solid rgba(178, 67, 61, 0.3)',
+                    borderRadius: 'var(--radius-sm)',
+                    color: '#991B1B',
+                    fontSize: '12px',
+                    lineHeight: '1.5',
+                    marginBottom: '12px',
+                  }}
+                >
+                  <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px', color: '#B2433D' }} />
+                  <div>
+                    <strong style={{ display: 'block', color: '#B2433D', marginBottom: '2px' }}>AI Error:</strong>
+                    <span>{aiError}</span>
+                  </div>
+                </div>
+              )}
 
               {aiResult && (
                 <div

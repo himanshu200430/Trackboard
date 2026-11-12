@@ -1,13 +1,26 @@
 import express from 'express';
+import pool from '../config/db.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 router.use(requireAuth);
 
-//Helper to call Groq API with automatic model fallback
-
+/**
+ * Helper to call Groq API with prioritized active models
+ */
 async function callGroqChat(messages, apiKey) {
-  const models = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'];
+  // Ordered by speed, quality, and capability
+  const models = [
+    'openai/gpt-oss-120b',
+    'openai/gpt-oss-20b',
+    'qwen/qwen3.8-27b',
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'llama-3.2-3b-preview',
+    'llama-3.2-1b-preview',
+    'allam-2-7b',
+  ];
+
   let lastError = null;
 
   for (const model of models) {
@@ -22,19 +35,20 @@ async function callGroqChat(messages, apiKey) {
           model,
           messages,
           temperature: 0.2,
-          max_tokens: 1500,
+          max_tokens: 1800,
         }),
       });
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        lastError = new Error(errData.error?.message || `HTTP ${response.status}`);
+        const msg = errData.error?.message || `HTTP ${response.status}`;
+        lastError = new Error(`Model ${model}: ${msg}`);
         continue;
       }
 
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content;
-      if (content) {
+      if (content && content.trim().length > 0) {
         return { content, modelUsed: model };
       }
     } catch (err) {
@@ -42,35 +56,64 @@ async function callGroqChat(messages, apiKey) {
     }
   }
 
-  throw lastError || new Error('All Groq model attempts failed.');
+  throw lastError || new Error('All configured Groq models failed to respond.');
 }
 
-// Safely parse JSON even if surrounded by markdown code blocks//
+/**
+ * Safely parse JSON even if surrounded by markdown code fences or reasoning blocks
+ */
 function extractJSON(rawText) {
   if (!rawText) return null;
   let text = rawText.trim();
-  const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  if (match) {
-    text = match[1].trim();
+
+  // Strip reasoning blocks (<think>...</think>)
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+  // Check for markdown code fences
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (fenceMatch) {
+    text = fenceMatch[1].trim();
+  } else {
+    // Locate first '{' and last '}'
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+      text = text.substring(start, end + 1);
+    }
   }
+
   return JSON.parse(text);
 }
 
-// POST /api/ai/summarize - Card Level AI Summary, Milestones & Progress
+/**
+ * Helper to retrieve Groq API key from environment
+ */
+function getGroqKey() {
+  return (
+    process.env.GROQ_API_KEY ||
+    (process.env.GEMINI_API_KEY?.startsWith('gsk_') ? process.env.GEMINI_API_KEY : null)
+  );
+}
+
+// ============================================================================
+// POST /api/ai/summarize - Live LLM Card Summary, Milestones & Progress
+// ============================================================================
 router.post('/summarize', async (req, res) => {
   try {
     const { card, boardTitle, listTitle } = req.body;
-    const apiKey =
-      process.env.GROQ_API_KEY ||
-      (process.env.GEMINI_API_KEY?.startsWith('gsk_') ? process.env.GEMINI_API_KEY : null);
+    const apiKey = getGroqKey();
 
     if (!card || !card.title) {
       return res.status(400).json({ error: 'Card data is required for summarization.' });
     }
 
-    if (apiKey) {
-      try {
-        const prompt = `Analyze this agile task in Tackboard and provide an actionable breakdown:
+    if (!apiKey) {
+      return res.status(400).json({
+        error: 'GROQ_API_KEY is not configured in backend environment variables. Please add GROQ_API_KEY to your Vercel project settings.',
+      });
+    }
+
+    const prompt = `Analyze this agile task in Tackboard and provide an actionable breakdown:
 Board: ${boardTitle || 'Project'}
 Current List Stage: ${listTitle || 'In Progress'}
 Task Title: ${card.title}
@@ -91,77 +134,59 @@ Provide an assessment formatted strictly as valid JSON with these fields:
   "keyRisks": ["Risk or dependency 1", "Risk 2"]
 }`;
 
-        const { content, modelUsed } = await callGroqChat(
-          [
-            {
-              role: 'system',
-              content:
-                'You are an expert Technical Lead and Agile Coach. Respond ONLY with valid, parseable JSON matching the requested schema. No conversational filler or introductory text.',
-            },
-            { role: 'user', content: prompt },
-          ],
-          apiKey
-        );
+    const { content, modelUsed } = await callGroqChat(
+      [
+        {
+          role: 'system',
+          content:
+            'You are an expert Technical Lead and Agile Coach. Respond ONLY with valid, parseable JSON matching the requested schema. No conversational filler or introductory text.',
+        },
+        { role: 'user', content: prompt },
+      ],
+      apiKey
+    );
 
-        const structured = extractJSON(content);
-        if (structured) {
-          return res.json({
-            ...structured,
-            summary: structured.executiveSummary,
-            source: 'groq-live',
-            model: modelUsed,
-          });
-        }
-      } catch (groqErr) {
-        console.warn('[Groq Card Analysis Failed, using structured fallback]:', groqErr.message);
-      }
+    let structured = null;
+    try {
+      structured = extractJSON(content);
+    } catch (parseErr) {
+      console.error('[AI Parse Error]:', parseErr.message, 'Raw content:', content);
+      return res.status(502).json({
+        error: `Failed to parse AI response into JSON: ${parseErr.message}. Output was: ${content.slice(0, 150)}...`,
+      });
     }
 
-    // Deterministic fallback if API fails or offline
-    const isDone = (listTitle || '').toLowerCase().includes('done') || (listTitle || '').toLowerCase().includes('shipped');
-    const isProgress = (listTitle || '').toLowerCase().includes('progress') || (listTitle || '').toLowerCase().includes('dev');
-    const isReview = (listTitle || '').toLowerCase().includes('review');
-    const defaultProgress = isDone ? 100 : isReview ? 80 : isProgress ? 50 : 15;
+    if (!structured) {
+      return res.status(502).json({ error: 'LLM returned an empty or unparseable response.' });
+    }
 
     return res.json({
-      executiveSummary: `Task "${card.title}" is currently tracked in stage "${listTitle || 'Backlog'}". Key focus is fulfilling core specifications and verifying quality standards before deployment.`,
-      summary: `Task "${card.title}" is currently tracked in stage "${listTitle || 'Backlog'}". Key focus is fulfilling core specifications and verifying quality standards before deployment.`,
-      estimatedProgress: defaultProgress,
-      complexity: card.labels?.some((l) => l.name.toLowerCase().includes('urgent') || l.name.toLowerCase().includes('bug')) ? 'High' : 'Medium',
-      estimatedHours: 8,
-      milestones: [
-        { name: 'Requirements & Scope', percent: 100, status: 'Completed' },
-        { name: 'Core Implementation', percent: defaultProgress > 30 ? 70 : 0, status: defaultProgress > 30 ? 'In Progress' : 'Pending' },
-        { name: 'QA & Regression Testing', percent: isReview || isDone ? 90 : 0, status: isReview ? 'In Progress' : isDone ? 'Completed' : 'Pending' },
-        { name: 'Code Review & Release', percent: isDone ? 100 : 0, status: isDone ? 'Completed' : 'Pending' },
-      ],
-      actionItems: [
-        'Review acceptance criteria and confirm dependency readiness',
-        'Execute core implementation updates according to architecture standards',
-        'Run test passes and resolve edge cases',
-        'Move to In Review once verified',
-      ],
-      keyRisks: [
-        'Ensure regression coverage across dependent components',
-        'Confirm environment configurations match production requirements',
-      ],
-      source: 'deterministic-fallback',
-      apiKeyConfigured: Boolean(apiKey),
+      ...structured,
+      summary: structured.executiveSummary,
+      source: 'groq-live',
+      model: modelUsed,
     });
   } catch (err) {
     console.error('[AI Summary Error]:', err);
-    return res.status(500).json({ error: 'Failed to generate task summary.' });
+    return res.status(502).json({
+      error: `AI Generation Failed: ${err.message || 'Unknown error'}`,
+    });
   }
 });
 
-// POST /api/ai/board-summary - Full Board Progress Analytics & AI Charts
-
+// ============================================================================
+// POST /api/ai/board-summary - Live LLM Board Progress Analytics
+// ============================================================================
 router.post('/board-summary', async (req, res) => {
   try {
     const { boardTitle, lists = [], cards = [], labels = [] } = req.body;
-    const apiKey =
-      process.env.GROQ_API_KEY ||
-      (process.env.GEMINI_API_KEY?.startsWith('gsk_') ? process.env.GEMINI_API_KEY : null);
+    const apiKey = getGroqKey();
+
+    if (!apiKey) {
+      return res.status(400).json({
+        error: 'GROQ_API_KEY is not configured in backend environment variables. Please add GROQ_API_KEY to your Vercel project settings.',
+      });
+    }
 
     // 1. Calculate Real Board Statistics
     const totalCards = cards.length;
@@ -186,17 +211,19 @@ router.post('/board-summary', async (req, res) => {
     });
 
     // Label Breakdown
-    const labelDistribution = labels.map((lbl) => {
-      const count = cards.filter((c) =>
-        c.labels?.some((cl) => cl.id === lbl.id || cl.name === lbl.name)
-      ).length;
-      return {
-        id: lbl.id,
-        name: lbl.name,
-        color: lbl.color,
-        count,
-      };
-    }).filter((l) => l.count > 0);
+    const labelDistribution = labels
+      .map((lbl) => {
+        const count = cards.filter((c) =>
+          c.labels?.some((cl) => cl.id === lbl.id || cl.name === lbl.name)
+        ).length;
+        return {
+          id: lbl.id,
+          name: lbl.name,
+          color: lbl.color,
+          count,
+        };
+      })
+      .filter((l) => l.count > 0);
 
     // Overdue Cards
     const now = new Date();
@@ -204,13 +231,8 @@ router.post('/board-summary', async (req, res) => {
       (c) => c.due_date && new Date(c.due_date) < now && !doneListIds.has(c.list_id)
     );
 
-    // 2. Call Groq for Strategic Project Insights
-    let aiInsights = null;
-    let modelUsed = null;
-
-    if (apiKey) {
-      try {
-        const prompt = `Analyze this agile Kanban board and generate an executive health & velocity report:
+    // 2. Call Groq for Live Strategic Insights
+    const prompt = `Analyze this agile Kanban board and generate an executive health & velocity report:
 Board Title: "${boardTitle || 'Project Board'}"
 Total Cards: ${totalCards}
 Completed Cards: ${completedCards} (${progressPercent}% complete)
@@ -238,40 +260,30 @@ Format your response strictly as valid JSON:
   ]
 }`;
 
-        const { content, modelUsed: model } = await callGroqChat(
-          [
-            {
-              role: 'system',
-              content:
-                'You are an Agile Delivery Director. Respond strictly with valid, parseable JSON according to the schema.',
-            },
-            { role: 'user', content: prompt },
-          ],
-          apiKey
-        );
+    const { content, modelUsed } = await callGroqChat(
+      [
+        {
+          role: 'system',
+          content:
+            'You are an Agile Delivery Director. Respond strictly with valid, parseable JSON according to the schema.',
+        },
+        { role: 'user', content: prompt },
+      ],
+      apiKey
+    );
 
-        aiInsights = extractJSON(content);
-        modelUsed = model;
-      } catch (groqErr) {
-        console.warn('[Groq Board Summary Warning]:', groqErr.message);
-      }
+    let aiInsights = null;
+    try {
+      aiInsights = extractJSON(content);
+    } catch (parseErr) {
+      console.error('[AI Parse Error]:', parseErr.message, 'Raw content:', content);
+      return res.status(502).json({
+        error: `Failed to parse AI insights JSON: ${parseErr.message}`,
+      });
     }
 
     if (!aiInsights) {
-      aiInsights = {
-        projectHealth: progressPercent >= 50 ? 'Strong Velocity' : progressPercent >= 25 ? 'On Track' : 'Attention Needed',
-        healthScore: Math.min(100, Math.max(20, progressPercent + 20)),
-        executiveSummary: `The "${boardTitle}" board currently has ${totalCards} total work items with ${completedCards} delivered (${progressPercent}% sprint completion). Work is actively advancing through review and development pipelines.`,
-        velocityStatus: `${completedCards} of ${totalCards} cards shipped. Healthy flow across active lists.`,
-        bottlenecks: overdueCards.length > 0
-          ? [`${overdueCards.length} item(s) are past their due dates and should be re-prioritized.`]
-          : ['Ensure cards in Review are validated to maintain steady delivery.'],
-        strategicRecommendations: [
-          'Prioritize items currently in progress to avoid multitasking delays',
-          'Conduct testing on items in review before taking on new backlog items',
-          'Review upcoming deadlines for active sprint deliverables',
-        ],
-      };
+      return res.status(502).json({ error: 'LLM returned an empty or invalid response.' });
     }
 
     return res.json({
@@ -284,12 +296,130 @@ Format your response strictly as valid JSON:
         labelDistribution,
       },
       insights: aiInsights,
-      source: apiKey ? 'groq-live' : 'local-stats',
+      source: 'groq-live',
       model: modelUsed,
     });
   } catch (err) {
     console.error('[AI Board Summary Error]:', err);
-    return res.status(500).json({ error: 'Failed to generate board analytics.' });
+    return res.status(502).json({
+      error: `AI Board Analysis Failed: ${err.message || 'Unknown error'}`,
+    });
+  }
+});
+
+// ============================================================================
+// GET /api/ai/board-summary - Live LLM Executive Sprint Assessment for Reports
+// ============================================================================
+router.get('/board-summary', async (req, res) => {
+  try {
+    const { boardId } = req.query;
+    if (!boardId) {
+      return res.status(400).json({ error: 'boardId query parameter is required.' });
+    }
+
+    const apiKey = getGroqKey();
+    if (!apiKey) {
+      return res.status(400).json({
+        error: 'GROQ_API_KEY is not configured in backend environment variables. Please add GROQ_API_KEY to your Vercel project settings.',
+      });
+    }
+
+    // Fetch board info, lists, and cards from DB
+    const boardRes = await pool.query('SELECT * FROM boards WHERE id = $1', [boardId]);
+    if (boardRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Board not found.' });
+    }
+    const board = boardRes.rows[0];
+
+    const listsRes = await pool.query(
+      'SELECT * FROM lists WHERE board_id = $1 ORDER BY position ASC',
+      [boardId]
+    );
+    const lists = listsRes.rows;
+
+    const cardsRes = await pool.query(
+      `SELECT c.*, l.title as list_title
+       FROM cards c
+       JOIN lists l ON c.list_id = l.id
+       WHERE l.board_id = $1
+       ORDER BY c.position ASC`,
+      [boardId]
+    );
+    const cards = cardsRes.rows;
+
+    const totalCards = cards.length;
+    const completedCards = cards.filter((c) =>
+      /done|shipped|closed|completed/i.test(c.list_title)
+    ).length;
+    const progressPercent = totalCards > 0 ? Math.round((completedCards / totalCards) * 100) : 0;
+    const now = new Date();
+    const overdueCards = cards.filter(
+      (c) =>
+        c.due_date &&
+        new Date(c.due_date) < now &&
+        !/done|shipped|closed|completed/i.test(c.list_title)
+    );
+
+    const prompt = `Analyze this agile project board and generate an executive sprint assessment:
+Board Title: "${board.title}"
+Total Cards: ${totalCards}
+Completed Cards: ${completedCards} (${progressPercent}% completed)
+Overdue Items: ${overdueCards.length}
+Stage Lists: ${lists.map((l) => l.title).join(', ')}
+Key Work Items Sample:
+${cards.slice(0, 10).map((c) => `- "${c.title}" [${c.list_title}]`).join('\n')}
+
+Format your response strictly as valid JSON:
+{
+  "health": "Healthy" | "Attention Needed" | "At Risk",
+  "narrative": "2-3 crisp sentences providing an executive summary of sprint delivery and velocity",
+  "risks": [
+    "Specific delivery risk 1",
+    "Specific delivery risk 2"
+  ]
+}`;
+
+    const { content, modelUsed } = await callGroqChat(
+      [
+        {
+          role: 'system',
+          content:
+            'You are an Agile Delivery Executive. Respond strictly with valid, parseable JSON according to the schema.',
+        },
+        { role: 'user', content: prompt },
+      ],
+      apiKey
+    );
+
+    let structured = null;
+    try {
+      structured = extractJSON(content);
+    } catch (parseErr) {
+      console.error('[AI Parse Error]:', parseErr.message, 'Raw content:', content);
+      return res.status(502).json({
+        error: `Failed to parse AI assessment JSON: ${parseErr.message}`,
+      });
+    }
+
+    if (!structured) {
+      return res.status(502).json({ error: 'LLM returned an empty or invalid response.' });
+    }
+
+    return res.json({
+      health: structured.health || (progressPercent >= 50 ? 'Healthy' : 'Attention Needed'),
+      narrative:
+        structured.narrative ||
+        structured.executiveSummary ||
+        'Board sprint is in progress.',
+      risks: structured.risks || [],
+      model: modelUsed,
+      source: 'groq-live',
+    });
+  } catch (err) {
+    console.error('[AI GET Board Summary Error]:', err);
+    return res.status(502).json({
+      error: `AI Assessment Failed: ${err.message || 'Unknown error'}`,
+    });
   }
 });
 

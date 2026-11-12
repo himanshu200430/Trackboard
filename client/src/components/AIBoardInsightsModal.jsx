@@ -14,9 +14,11 @@ export const AIBoardInsightsModal = ({
   const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
 
   const fetchInsights = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch('/api/ai/board-summary', {
         method: 'POST',
@@ -30,13 +32,15 @@ export const AIBoardInsightsModal = ({
         }),
       });
 
+      const result = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        throw new Error('Failed to generate board insights.');
+        throw new Error(result.error || 'Failed to generate board insights.');
       }
 
-      const result = await res.json();
       setData(result);
     } catch (err) {
+      setError(err.message);
       toast.error(err.message);
     } finally {
       setLoading(false);
@@ -310,6 +314,21 @@ export const AIBoardInsightsModal = ({
               <span>Refresh Insights</span>
             </button>
           </div>
+        </div>
+      ) : error ? (
+        <div style={{ textAlign: 'center', padding: '36px 20px' }}>
+          <AlertTriangle size={32} color="#B2433D" style={{ marginBottom: '12px' }} />
+          <h4 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--ink-primary)' }}>AI Generation Error</h4>
+          <p style={{ fontSize: '13px', color: '#B2433D', marginTop: '6px', maxWidth: '480px', margin: '6px auto 16px', lineHeight: '1.5' }}>
+            {error}
+          </p>
+          <button
+            onClick={fetchInsights}
+            className="btn btn-primary"
+            style={{ fontSize: '12px', padding: '6px 14px' }}
+          >
+            Retry AI Analysis
+          </button>
         </div>
       ) : null}
     </Modal>

@@ -1,9 +1,8 @@
+
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 import authRoutes from './routes/auth.js';
 import boardRoutes from './routes/boards.js';
@@ -18,13 +17,12 @@ import fileRoutes from './routes/files.js';
 import memberRoutes from './routes/members.js';
 import pool from './config/db.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config({ path: path.join(__dirname, '../../server/.env') });
+// Load environment variables for local development
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
 // Middleware
@@ -32,28 +30,52 @@ app.use(cors({
   origin: CLIENT_URL,
   credentials: true,
 }));
+
 app.use(cookieParser());
 app.use(express.json());
 
-// Request logger for development
+// Request logger
 app.use((req, res, next) => {
   const start = Date.now();
+
   res.on('finish', () => {
     const duration = Date.now() - start;
+
     if (process.env.NODE_ENV !== 'test') {
-      console.log(`[${req.method}] ${req.originalUrl} -> ${res.statusCode} (${duration}ms)`);
+      console.log(
+        `[${req.method}] ${req.originalUrl} -> ${res.statusCode} (${duration}ms)`
+      );
     }
   });
+
   next();
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Welcome to Tackboard API',
+    status: 'running',
+  });
 });
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
-    res.json({ status: 'ok', service: 'Tackboard API', database: 'connected' });
+
+    res.json({
+      status: 'ok',
+      service: 'Tackboard API',
+      database: 'connected',
+    });
   } catch (err) {
-    res.status(500).json({ status: 'error', error: err.message });
+    console.error('Database health check failed:', err.message);
+
+    res.status(500).json({
+      status: 'error',
+      database: 'disconnected',
+    });
   }
 });
 
@@ -70,39 +92,29 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/members', memberRoutes);
 
-// Optional: Serve client build if present in production
-const clientDist = path.join(__dirname, '../../client/dist');
-app.use(express.static(clientDist));
-app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api')) {
-    return next();
-  }
-  const indexPath = path.join(clientDist, 'index.html');
-  res.sendFile(indexPath, (err) => {
-    if (err) next();
+// 404 handler for undefined API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({
+    error: 'Endpoint not found.',
   });
 });
 
-// 404 handler for undefined API routes
-app.use('/api/*', (req, res) => {
-  res.status(404).json({ error: 'Endpoint not found.' });
-});
-
-// Global Error Handler
+// Global error handler
 app.use((err, req, res, next) => {
   console.error('[Unhandled Error]:', err);
+
   res.status(err.status || 500).json({
     error: err.message || 'An unexpected server error occurred.',
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`\n==================================================`);
-  console.log(` Tackboard Backend Server running on http://localhost:${PORT}`);
-  console.log(` Allowed Client: ${CLIENT_URL}`);
-  console.log(` Database: connected via pg pool`);
-  console.log(`==================================================\n`);
-});
+// Local development server only
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Tackboard Backend running on http://localhost:${PORT}`);
+    console.log(`Allowed Client: ${CLIENT_URL}`);
+  });
+}
 
+// Export Express app for Vercel
 export default app;
-

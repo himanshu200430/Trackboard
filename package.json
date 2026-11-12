@@ -9,7 +9,7 @@
     "client": "npm --prefix client run dev",
     "migrate": "npm --prefix server run migrate:up",
     "seed": "npm --prefix server run seed",
-    "build": "npm --prefix client run build",
+    "build": "npm --prefix client install && npm --prefix client run build",
     "test:backend": "node server/tests/phase1.test.js"
   },
   "dependencies": {

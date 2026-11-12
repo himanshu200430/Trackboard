@@ -27,7 +27,7 @@ const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
 // Middleware
 app.use(cors({
-  origin: CLIENT_URL,
+  origin: true,
   credentials: true,
 }));
 

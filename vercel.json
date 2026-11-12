@@ -3,8 +3,8 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index.js"
+      "source": "/api/:path*",
+      "destination": "https://trackboard-g3gj.vercel.app/api/:path*"
     },
     {
       "source": "/(.*)",

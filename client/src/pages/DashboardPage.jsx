@@ -87,9 +87,9 @@ export const DashboardPage = () => {
       <div style={{ display: 'flex', flex: 1 }}>
         <Sidebar onOpenCreateBoard={() => setIsCreateOpen(true)} />
 
-        <main style={{ flex: 1, padding: '28px 36px', overflowY: 'auto', maxWidth: '1100px' }}>
+        <main className="main-content">
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '24px' }}>
+        <div className="responsive-header">
           <div>
             <h1 className="font-display" style={{ fontSize: '28px', fontWeight: 600 }}>
               Workspaces & Boards

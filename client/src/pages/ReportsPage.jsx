@@ -78,9 +78,9 @@ export const ReportsPage = () => {
       <div style={{ display: 'flex', flex: 1 }}>
         <Sidebar onOpenCreateBoard={() => navigate('/')} />
 
-        <main style={{ flex: 1, padding: '28px 32px', overflowY: 'auto', maxWidth: '1100px' }}>
+        <main className="main-content">
           {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '24px' }}>
+          <div className="responsive-header">
             <div>
               <h1 className="font-display" style={{ fontSize: '26px', fontWeight: 600 }}>
                 Sprint Reports & Analytics
@@ -94,7 +94,7 @@ export const ReportsPage = () => {
               onClick={handleGenerateAIOverview}
               disabled={aiLoading || boards.length === 0}
               className="btn btn-primary"
-              style={{ fontSize: '12px', padding: '6px 14px', gap: '6px' }}
+              style={{ fontSize: '12px', padding: '6px 14px', gap: '6px', whiteSpace: 'nowrap' }}
             >
               <Sparkles size={14} />
               <span>{aiLoading ? 'Analyzing via Groq...' : 'Generate Executive AI Report'}</span>
@@ -102,7 +102,7 @@ export const ReportsPage = () => {
           </div>
 
           {/* Metric Stat Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
+          <div className="stats-grid-4">
             <div style={{ backgroundColor: 'var(--bg-surface-elevated)', border: 'var(--border-hairline)', borderRadius: 'var(--radius-sm)', padding: '16px', boxShadow: 'var(--shadow-subtle)' }}>
               <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--ink-secondary)', textTransform: 'uppercase' }}>
                 Overall Completion

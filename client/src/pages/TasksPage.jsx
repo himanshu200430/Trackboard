@@ -65,9 +65,9 @@ export const TasksPage = () => {
       <div style={{ display: 'flex', flex: 1 }}>
         <Sidebar onOpenCreateBoard={() => navigate('/')} />
 
-        <main style={{ flex: 1, padding: '28px 32px', overflowY: 'auto', maxWidth: '1100px' }}>
+        <main className="main-content">
           {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <div className="responsive-header">
             <div>
               <h1 className="font-display" style={{ fontSize: '26px', fontWeight: 600 }}>
                 Tasks & Work Items
@@ -78,7 +78,7 @@ export const TasksPage = () => {
             </div>
 
             {/* Search Input */}
-            <div style={{ position: 'relative', width: '220px' }}>
+            <div style={{ position: 'relative', width: '220px', minWidth: '180px' }}>
               <Search size={14} color="var(--ink-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="text"
@@ -92,7 +92,7 @@ export const TasksPage = () => {
           </div>
 
           {/* Filter Pills */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: 'var(--border-hairline)', paddingBottom: '12px' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: 'var(--border-hairline)', paddingBottom: '12px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             {[
               { id: 'all', label: `All Tasks (${tasks.length})` },
               { id: 'active', label: 'Active' },

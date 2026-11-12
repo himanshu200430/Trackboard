@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useSidebar } from '../context/SidebarContext';
 import {
   LayoutGrid,
   CheckSquare,
@@ -16,12 +17,14 @@ import {
   ChevronDown,
   PanelLeftClose,
   PanelLeftOpen,
+  X,
 } from 'lucide-react';
 import { AccountSettingsModal, TeamPermissionsModal, SupportModal } from './SettingsModals';
 
 export const Sidebar = ({ onOpenCreateBoard }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isMobileOpen, closeSidebar } = useSidebar();
   const [boards, setBoards] = useState([]);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isSettingsExpanded, setIsSettingsExpanded] = useState(true);
@@ -57,7 +60,10 @@ export const Sidebar = ({ onOpenCreateBoard }) => {
 
   return (
     <>
+      {isMobileOpen && <div className="mobile-sidebar-backdrop" onClick={closeSidebar} />}
+
       <aside
+        className={`tack-sidebar ${isMobileOpen ? 'mobile-open' : ''}`}
         style={{
           width: isCollapsed ? '64px' : '240px',
           minWidth: isCollapsed ? '64px' : '240px',
@@ -77,7 +83,7 @@ export const Sidebar = ({ onOpenCreateBoard }) => {
       >
         {/* Top: Menu Sections */}
         <div style={{ padding: isCollapsed ? '12px 8px' : '16px 12px' }}>
-          {/* Collapse Toggle */}
+          {/* Collapse & Mobile Close Toggle */}
           <div
             style={{
               display: 'flex',
@@ -93,14 +99,24 @@ export const Sidebar = ({ onOpenCreateBoard }) => {
                 WORKSPACE
               </span>
             )}
-            <button
-              onClick={() => setIsCollapsed((c) => !c)}
-              className="btn-ghost"
-              style={{ padding: '4px', color: 'var(--ink-muted)' }}
-              title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              {isCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={15} />}
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button
+                onClick={() => setIsCollapsed((c) => !c)}
+                className="btn-ghost desktop-collapse-btn"
+                style={{ padding: '4px', color: 'var(--ink-muted)' }}
+                title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              >
+                {isCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={15} />}
+              </button>
+              <button
+                onClick={closeSidebar}
+                className="btn-ghost mobile-close-btn"
+                style={{ padding: '4px', color: 'var(--ink-muted)' }}
+                title="Close navigation"
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
 
           {/* SECTION 1: MAIN MENU */}
@@ -122,6 +138,7 @@ export const Sidebar = ({ onOpenCreateBoard }) => {
                   <NavLink
                     key={item.path}
                     to={item.path}
+                    onClick={closeSidebar}
                     className="sidebar-link"
                     style={{
                       display: 'flex',
@@ -166,7 +183,10 @@ export const Sidebar = ({ onOpenCreateBoard }) => {
 
               {/* Add Project (+) Button */}
               <button
-                onClick={onOpenCreateBoard}
+                onClick={() => {
+                  closeSidebar();
+                  onOpenCreateBoard();
+                }}
                 className="btn-ghost"
                 style={{
                   padding: '2px 4px',
@@ -189,6 +209,7 @@ export const Sidebar = ({ onOpenCreateBoard }) => {
                   <NavLink
                     key={b.id}
                     to={`/b/${b.id}`}
+                    onClick={closeSidebar}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -262,7 +283,10 @@ export const Sidebar = ({ onOpenCreateBoard }) => {
           {(isSettingsExpanded || isCollapsed) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <button
-                onClick={() => setIsAccountOpen(true)}
+                onClick={() => {
+                  closeSidebar();
+                  setIsAccountOpen(true);
+                }}
                 className="btn-ghost"
                 style={{
                   width: '100%',
@@ -279,7 +303,10 @@ export const Sidebar = ({ onOpenCreateBoard }) => {
               </button>
 
               <button
-                onClick={() => setIsPermissionsOpen(true)}
+                onClick={() => {
+                  closeSidebar();
+                  setIsPermissionsOpen(true);
+                }}
                 className="btn-ghost"
                 style={{
                   width: '100%',
@@ -296,7 +323,10 @@ export const Sidebar = ({ onOpenCreateBoard }) => {
               </button>
 
               <button
-                onClick={() => setIsSupportOpen(true)}
+                onClick={() => {
+                  closeSidebar();
+                  setIsSupportOpen(true);
+                }}
                 className="btn-ghost"
                 style={{
                   width: '100%',

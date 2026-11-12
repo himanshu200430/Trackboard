@@ -54,8 +54,8 @@ export const FilesPage = () => {
       <div style={{ display: 'flex', flex: 1 }}>
         <Sidebar onOpenCreateBoard={() => {}} />
 
-        <main style={{ flex: 1, padding: '28px 32px', overflowY: 'auto', maxWidth: '1100px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <main className="main-content">
+          <div className="responsive-header">
             <div>
               <h1 className="font-display" style={{ fontSize: '26px', fontWeight: 600 }}>
                 Files & Project Assets

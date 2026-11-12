@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { SidebarProvider } from './context/SidebarContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
@@ -57,7 +58,8 @@ export const App = () => {
     <ToastProvider>
       <AuthProvider>
         <NotificationProvider>
-          <BrowserRouter>
+          <SidebarProvider>
+            <BrowserRouter>
             <Routes>
               {/* Public Auth Routes */}
               <Route
@@ -149,7 +151,8 @@ export const App = () => {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
-        </NotificationProvider>
+        </SidebarProvider>
+      </NotificationProvider>
       </AuthProvider>
     </ToastProvider>
   );

@@ -111,9 +111,9 @@ export const CalendarPage = () => {
       <div style={{ display: 'flex', flex: 1 }}>
         <Sidebar onOpenCreateBoard={() => navigate('/')} />
 
-        <main style={{ flex: 1, padding: '28px 32px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <main className="main-content" style={{ display: 'flex', flexDirection: 'column' }}>
           {/* Header Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <div className="responsive-header" style={{ alignItems: 'center' }}>
             <div>
               <h1 className="font-display" style={{ fontSize: '26px', fontWeight: 600 }}>
                 Deliverables Calendar

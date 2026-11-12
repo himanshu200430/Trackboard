@@ -1,11 +1,13 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutGrid, LogOut, HelpCircle, Search, Shield } from 'lucide-react';
+import { useSidebar } from '../context/SidebarContext';
+import { LayoutGrid, LogOut, HelpCircle, Search, Shield, Menu } from 'lucide-react';
 import NotificationPopover from './NotificationPopover';
 
 export const Navbar = ({ board, userRole, searchQuery, onSearchChange, onOpenShortcuts }) => {
   const { user, logout } = useAuth();
+  const { toggleSidebar } = useSidebar();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -15,6 +17,7 @@ export const Navbar = ({ board, userRole, searchQuery, onSearchChange, onOpenSho
 
   return (
     <header
+      className="tack-navbar"
       style={{
         height: '52px',
         borderBottom: 'var(--border-hairline)',
@@ -22,14 +25,28 @@ export const Navbar = ({ board, userRole, searchQuery, onSearchChange, onOpenSho
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 20px',
+        padding: '0 16px',
         position: 'sticky',
         top: 0,
         zIndex: 50,
       }}
     >
       {/* Left: Brand & Context */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Mobile Hamburger Drawer Trigger */}
+        <button
+          onClick={toggleSidebar}
+          className="btn-ghost mobile-menu-trigger"
+          aria-label="Toggle navigation menu"
+          style={{
+            padding: '6px',
+            color: 'var(--ink-primary)',
+            borderRadius: 'var(--radius-xs)',
+          }}
+        >
+          <Menu size={19} />
+        </button>
+
         <Link
           to="/"
           style={{
@@ -102,7 +119,7 @@ export const Navbar = ({ board, userRole, searchQuery, onSearchChange, onOpenSho
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         {/* Quick Search */}
         {onSearchChange !== undefined && (
-          <div style={{ position: 'relative', width: '180px' }}>
+          <div className="navbar-search" style={{ position: 'relative', width: '180px' }}>
             <Search
               size={13}
               color="var(--ink-muted)"

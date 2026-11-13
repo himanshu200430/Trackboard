@@ -317,7 +317,7 @@ export const CardDetailModal = ({
                   {isSummarizing ? (
                     <>
                       <Sparkles size={12} className="spin" />
-                      <span>Analyzing with Groq...</span>
+                      <span>Analyzing with AI...</span>
                     </>
                   ) : aiResult ? (
                     'Regenerate Summary'
@@ -421,7 +421,7 @@ export const CardDetailModal = ({
                       </span>
                       {aiResult.source && (
                         <span className="badge" style={{ marginLeft: 'auto', backgroundColor: '#EEF2F6', color: '#3F627D' }}>
-                          ⚡ {aiResult.source === 'groq-live' ? 'Groq Live' : 'AI Offline'}
+                          ⚡ AI Active
                         </span>
                       )}
                     </div>

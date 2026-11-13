@@ -64,13 +64,13 @@ export const AIBoardInsightsModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Board Insights & Progress Analytics"
-      subtitle={`AI synthesis powered by Groq for "${boardTitle}"`}
+      subtitle={`AI sprint synthesis for "${boardTitle}"`}
       maxWidth={720}
     >
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px 20px' }}>
           <Sparkles size={28} color="var(--accent)" style={{ animation: 'spin 2s linear infinite', marginBottom: '12px' }} />
-          <h4 style={{ fontSize: '15px', fontWeight: 600 }}>Analyzing board workflows with Groq...</h4>
+          <h4 style={{ fontSize: '15px', fontWeight: 600 }}>Analyzing board workflows with AI...</h4>
           <p style={{ fontSize: '12px', color: 'var(--ink-secondary)', marginTop: '4px' }}>
             Evaluating completion velocity, stage distribution, and sprint bottlenecks.
           </p>
@@ -302,7 +302,7 @@ export const AIBoardInsightsModal = ({
           {/* Modal Footer */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: 'var(--border-hairline)' }}>
             <span style={{ fontSize: '11px', color: 'var(--ink-muted)' }}>
-              Model: {data.model || 'Groq llama / gpt-oss'}
+              Engine: {data.model ? data.model.replace(/^[^/]+\//, '') : 'AI Lead Engine'}
             </span>
             <button
               onClick={fetchInsights}

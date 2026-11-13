@@ -6,9 +6,9 @@ const router = express.Router();
 router.use(requireAuth);
 
 /**
- * Helper to call Groq API with prioritized active models
+ * Helper to call LLM chat completion API with prioritized active models
  */
-async function callGroqChat(messages, apiKey) {
+async function callLLMChat(messages, apiKey) {
   // Ordered by speed, quality, and capability
   const models = [
     'openai/gpt-oss-120b',
@@ -56,7 +56,7 @@ async function callGroqChat(messages, apiKey) {
     }
   }
 
-  throw lastError || new Error('All configured Groq models failed to respond.');
+  throw lastError || new Error('All configured AI models failed to respond.');
 }
 
 /**
@@ -86,16 +86,17 @@ function extractJSON(rawText) {
 }
 
 /**
- * Helper to retrieve and sanitize Groq API key from environment
+ * Helper to retrieve and sanitize AI API key from environment
  */
-function getGroqKey() {
+function getAIKey() {
   const raw =
+    process.env.AI_API_KEY ||
     process.env.GROQ_API_KEY ||
     (process.env.GEMINI_API_KEY?.startsWith('gsk_') ? process.env.GEMINI_API_KEY : null);
 
   if (!raw) return null;
 
-  // Clean key: extract first valid 'gsk_...' token and strip any accidental newlines or whitespace
+  // Clean key: extract first valid token and strip any accidental newlines or whitespace
   const match = raw.match(/gsk_[a-zA-Z0-9_-]+/);
   if (match) {
     return match[0].trim();
@@ -110,7 +111,7 @@ function getGroqKey() {
 router.post('/summarize', async (req, res) => {
   try {
     const { card, boardTitle, listTitle } = req.body;
-    const apiKey = getGroqKey();
+    const apiKey = getAIKey();
 
     if (!card || !card.title) {
       return res.status(400).json({ error: 'Card data is required for summarization.' });
@@ -118,7 +119,7 @@ router.post('/summarize', async (req, res) => {
 
     if (!apiKey) {
       return res.status(400).json({
-        error: 'GROQ_API_KEY is not configured in backend environment variables. Please add GROQ_API_KEY to your Vercel project settings.',
+        error: 'AI service key is not configured in backend environment variables. Please check your project settings.',
       });
     }
 
@@ -143,7 +144,7 @@ Provide an assessment formatted strictly as valid JSON with these fields:
   "keyRisks": ["Risk or dependency 1", "Risk 2"]
 }`;
 
-    const { content, modelUsed } = await callGroqChat(
+    const { content, modelUsed } = await callLLMChat(
       [
         {
           role: 'system',
@@ -172,7 +173,7 @@ Provide an assessment formatted strictly as valid JSON with these fields:
     return res.json({
       ...structured,
       summary: structured.executiveSummary,
-      source: 'groq-live',
+      source: 'live',
       model: modelUsed,
     });
   } catch (err) {
@@ -189,11 +190,11 @@ Provide an assessment formatted strictly as valid JSON with these fields:
 router.post('/board-summary', async (req, res) => {
   try {
     const { boardTitle, lists = [], cards = [], labels = [] } = req.body;
-    const apiKey = getGroqKey();
+    const apiKey = getAIKey();
 
     if (!apiKey) {
       return res.status(400).json({
-        error: 'GROQ_API_KEY is not configured in backend environment variables. Please add GROQ_API_KEY to your Vercel project settings.',
+        error: 'AI service key is not configured in backend environment variables. Please check your project settings.',
       });
     }
 
@@ -240,7 +241,7 @@ router.post('/board-summary', async (req, res) => {
       (c) => c.due_date && new Date(c.due_date) < now && !doneListIds.has(c.list_id)
     );
 
-    // 2. Call Groq for Live Strategic Insights
+    // 2. Call LLM for Live Strategic Insights
     const prompt = `Analyze this agile Kanban board and generate an executive health & velocity report:
 Board Title: "${boardTitle || 'Project Board'}"
 Total Cards: ${totalCards}
@@ -269,7 +270,7 @@ Format your response strictly as valid JSON:
   ]
 }`;
 
-    const { content, modelUsed } = await callGroqChat(
+    const { content, modelUsed } = await callLLMChat(
       [
         {
           role: 'system',
@@ -305,7 +306,7 @@ Format your response strictly as valid JSON:
         labelDistribution,
       },
       insights: aiInsights,
-      source: 'groq-live',
+      source: 'live',
       model: modelUsed,
     });
   } catch (err) {
@@ -326,10 +327,10 @@ router.get('/board-summary', async (req, res) => {
       return res.status(400).json({ error: 'boardId query parameter is required.' });
     }
 
-    const apiKey = getGroqKey();
+    const apiKey = getAIKey();
     if (!apiKey) {
       return res.status(400).json({
-        error: 'GROQ_API_KEY is not configured in backend environment variables. Please add GROQ_API_KEY to your Vercel project settings.',
+        error: 'AI service key is not configured in backend environment variables. Please check your project settings.',
       });
     }
 
@@ -388,7 +389,7 @@ Format your response strictly as valid JSON:
   ]
 }`;
 
-    const { content, modelUsed } = await callGroqChat(
+    const { content, modelUsed } = await callLLMChat(
       [
         {
           role: 'system',
@@ -422,7 +423,7 @@ Format your response strictly as valid JSON:
         'Board sprint is in progress.',
       risks: structured.risks || [],
       model: modelUsed,
-      source: 'groq-live',
+      source: 'live',
     });
   } catch (err) {
     console.error('[AI GET Board Summary Error]:', err);

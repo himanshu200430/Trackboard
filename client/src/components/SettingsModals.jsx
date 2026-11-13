@@ -643,7 +643,7 @@ export const SupportModal = ({ isOpen, onClose }) => {
         <div style={{ padding: '12px', backgroundColor: 'rgba(200, 90, 50, 0.08)', border: '1px solid rgba(200, 90, 50, 0.25)', borderRadius: 'var(--radius-sm)' }}>
           <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-burnt)', marginBottom: '4px' }}>AI Sprint Intelligence</div>
           <p style={{ fontSize: '12px', color: 'var(--ink-primary)', lineHeight: '1.5', margin: 0 }}>
-            Groq high-speed LLM inference is configured in your server `.env`. Tasks and project boards can be analyzed with live completion progress charts!
+            Automated agile sprint intelligence is configured for your workspace. Tasks and project boards can be analyzed with live completion progress charts!
           </p>
         </div>
 

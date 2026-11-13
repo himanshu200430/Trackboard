@@ -54,7 +54,7 @@ export const ReportsPage = () => {
     if (boards.length === 0) return;
     setAiLoading(true);
     try {
-      // Analyze primary active board with Groq
+      // Analyze primary active board with AI
       const targetBoard = boards[0];
       const res = await fetch(`/api/ai/board-summary?boardId=${targetBoard.id}`, {
         credentials: 'include',
@@ -97,7 +97,7 @@ export const ReportsPage = () => {
               style={{ fontSize: '12px', padding: '6px 14px', gap: '6px', whiteSpace: 'nowrap' }}
             >
               <Sparkles size={14} />
-              <span>{aiLoading ? 'Analyzing via Groq...' : 'Generate Executive AI Report'}</span>
+              <span>{aiLoading ? 'Analyzing sprint data...' : 'Generate Executive AI Report'}</span>
             </button>
           </div>
 

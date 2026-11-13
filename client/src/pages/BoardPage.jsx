@@ -3,7 +3,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   closestCorners,
@@ -67,14 +68,23 @@ export const BoardPage = () => {
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Setup DnD sensors (distance: 4 to allow click vs drag distinction)
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 4,
-      },
-    })
-  );
+  // Setup DnD sensors:
+  // MouseSensor requires 6px drag before initiating drag (preventing accidental drags on desktop click)
+  // TouchSensor requires a 200ms hold (with 8px tolerance) on mobile, enabling smooth scrolling while allowing intuitive touch dragging
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: {
+      distance: 6,
+    },
+  });
+
+  const touchSensor = useSensor(TouchSensor, {
+    activationConstraint: {
+      delay: 200,
+      tolerance: 8,
+    },
+  });
+
+  const sensors = useSensors(mouseSensor, touchSensor);
 
   const isViewer = userRole === 'viewer';
   const isOwner = userRole === 'owner';
@@ -387,6 +397,35 @@ export const BoardPage = () => {
     const { active } = event;
     const activeData = active.data.current;
     setActiveDragItem(activeData);
+  };
+
+  const handleDragOver = (event) => {
+    if (isViewer) return;
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeType = active.data.current?.type;
+    if (activeType !== 'card') return;
+
+    const activeCardId = active.id;
+    const overData = over.data.current;
+
+    let targetListId = null;
+    if (overData?.type === 'list-droppable') {
+      targetListId = overData.listId;
+    } else if (overData?.type === 'card') {
+      targetListId = overData.card.list_id;
+    }
+
+    if (!targetListId) return;
+
+    const activeCard = cards.find((c) => c.id === activeCardId);
+    if (!activeCard || activeCard.list_id === targetListId) return;
+
+    // Smoothly shift card to target list during drag so user sees instant visual placement
+    setCards((prev) =>
+      prev.map((c) => (c.id === activeCardId ? { ...c, list_id: targetListId } : c))
+    );
   };
 
   const handleDragEnd = async (event) => {
@@ -717,6 +756,7 @@ export const BoardPage = () => {
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
         <div className="board-canvas">

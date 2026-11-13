@@ -94,14 +94,18 @@ export const List = ({
               style={{
                 cursor: 'grab',
                 color: 'var(--ink-muted)',
-                opacity: 0.5,
+                opacity: 0.6,
                 display: 'flex',
                 alignItems: 'center',
-                padding: '2px',
+                justifyContent: 'center',
+                padding: '4px 6px',
+                minWidth: '24px',
+                minHeight: '24px',
+                touchAction: 'none',
               }}
               title="Drag list to reorder"
             >
-              <GripHorizontal size={14} />
+              <GripHorizontal size={15} />
             </div>
           )}
 

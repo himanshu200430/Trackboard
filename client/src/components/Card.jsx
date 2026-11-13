@@ -48,7 +48,12 @@ export const Card = ({ card, onClick, isViewer = false }) => {
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{
+        ...style,
+        touchAction: 'manipulation',
+      }}
+      {...attributes}
+      {...listeners}
       className={`tack-card ${isDragging ? 'card-drag-source' : ''}`}
       onClick={() => onClick(card)}
     >
@@ -76,23 +81,20 @@ export const Card = ({ card, onClick, isViewer = false }) => {
           ) : null}
         </div>
 
-        {/* Drag Grip (Only rendered for non-viewers) */}
+        {/* Drag Grip Indicator */}
         {!isViewer && (
           <div
-            {...attributes}
-            {...listeners}
-            onClick={(e) => e.stopPropagation()}
             style={{
-              cursor: 'grab',
-              padding: '2px',
+              padding: '2px 4px',
               color: 'var(--ink-muted)',
               opacity: 0.6,
               display: 'flex',
               alignItems: 'center',
+              touchAction: 'none',
             }}
             title="Drag to reorder"
           >
-            <GripVertical size={13} />
+            <GripVertical size={14} />
           </div>
         )}
       </div>

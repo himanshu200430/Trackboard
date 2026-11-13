@@ -262,6 +262,7 @@ button {
   border: 1px solid var(--accent) !important;
   background: #FFFFFF !important;
   pointer-events: none;
+  touch-action: none !important;
   z-index: 9999;
 }
 
@@ -417,9 +418,16 @@ button {
   border: var(--border-hairline);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-card);
-  cursor: pointer;
+  cursor: grab;
   transition: transform var(--duration-short) ease, box-shadow var(--duration-short) ease, border-color var(--duration-short) ease;
   position: relative;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.tack-card:active {
+  cursor: grabbing;
 }
 
 .tack-card:hover {
@@ -617,21 +625,37 @@ button {
 
   /* Board view on mobile */
   .board-toolbar {
-    padding: 10px 14px !important;
+    padding: 8px 12px !important;
     gap: 8px !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .board-canvas {
-    padding: 12px 14px !important;
+    padding: 10px 12px !important;
     gap: 12px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    scroll-snap-type: x proximity;
   }
   .tack-list {
-    width: 270px !important;
-    min-width: 270px !important;
+    width: 82vw !important;
+    max-width: 300px !important;
+    min-width: 260px !important;
     max-height: calc(100vh - 120px) !important;
+    scroll-snap-align: start;
+  }
+  .tack-list-cards {
+    min-height: 64px !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 }
 
 @media (max-width: 480px) {
+  .tack-list {
+    width: 86vw !important;
+    min-width: 250px !important;
+  }
   .stats-grid-4 {
     grid-template-columns: 1fr !important;
   }
